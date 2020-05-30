@@ -30,8 +30,10 @@ public class DBConnection {
         ResultSet rs = null;
 
         try {
+
             stmt = conn.createStatement();
             rs = stmt.executeQuery(query_statement);
+
 
         }
         catch (SQLException ex){
@@ -65,17 +67,13 @@ public class DBConnection {
         return rs;
     }
 
-    // TODO Write a method to insert new data into the DBMS
-
-
-    public boolean check_connection() throws SQLException {
+    public boolean isConnected() throws SQLException {
         return conn.isValid(1);		// Checks connection every 10 seconds
     }
 
-
-    public boolean insert_data(String table, String data) throws SQLException {
+    public boolean insertData(String table, String data) throws SQLException {
         try {
-            System.out.println(data);
+            createTables();
 
             String query = "INSERT INTO " + table + " VALUES(";
             String split_data = "";
@@ -179,8 +177,8 @@ public class DBConnection {
 
                     if(data.charAt(x) == ',') {
                         counter++;
-                        if(counter == 0) {
-                            query += split_data + "\"" ;
+                        if(counter == 1) {
+                            query += split_data + "," ;
                             split_data = "";
                             continue;
                         }
@@ -189,8 +187,9 @@ public class DBConnection {
                             split_data = "";
                             continue;
                         }
-
-                        query += "\"" + split_data + "\"" + ",";
+                        else {
+                            query += "\"" + split_data + "\"" + ",";
+                        }
                         split_data = "";
                         continue;
                     }
@@ -203,23 +202,21 @@ public class DBConnection {
                 query += ");";
             }
 
-            System.out.println(query);
+
 
             Statement statement = conn.createStatement();
             statement.executeUpdate(query);
             return true;
 
         } catch (SQLIntegrityConstraintViolationException e) {
-            System.out.println("FOLLOW PRIMARY KEY CONSTRAINTS");
             return false;
 
         } catch (SQLException e) {
-            System.out.println("ERROR : " + e.getStackTrace());
             return false;
         }
     }
 
-    public void delete_data(String table,String data) throws SQLException {
+    public void deleteData(String table,String data) throws SQLException {
         String split_data = "";
         String query ="DELETE FROM " + table + " WHERE ";
 
@@ -318,9 +315,72 @@ public class DBConnection {
             query += " AND " + "WURL= " + split_data;
         }
 
-        System.out.println(query);
+
 
         Statement statement = conn.createStatement();
         statement.executeUpdate(query);
     }
+
+    public  void createTables() throws SQLException {
+        try {
+            Statement statement = conn.createStatement();
+
+            statement.executeUpdate(String.format("Create table IF NOT EXISTS Product" +
+                    " ( \n\tId INT PRIMARY KEY, \n" +
+                    "name VARCHAR(20) NOT NULL, \n" +
+                    "description VARCHAR(200),\n" +
+                    "brandname VARCHAR(200)\n);"));
+            statement.executeUpdate(String.format("Create table IF NOT EXISTS ProductKeyword (\n" +
+                    "Id INT, \n" +
+                    "type_keyword VARCHAR(20) NOT NULL, \n" +
+                    "PRIMARY KEY (Id, type_keyword), \n" +
+                    "FOREIGN KEY (Id) REFERENCES Product(Id)\n" +
+                    ");"));
+            statement.executeUpdate(String.format("Create table IF NOT EXISTS Website(\n" +
+                    "URL VARCHAR(200) PRIMARY KEY,\n" +
+                    "Country VARCHAR(30), \n" +
+                    "City VARCHAR(30), \n" +
+                    "ZipCode INT, \n" +
+                    "Street VARCHAR(50), \n" +
+                    "Email VARCHAR(30) NOT NULL\n" +
+                    ");"));
+
+            statement.executeUpdate(String.format("Create table IF NOT EXISTS ExternalSupplier(\n" +
+                    "URL VARCHAR(200),\n" +
+                    "name VARCHAR(30), \n" +
+                    "phone_number VARCHAR(20), \n" +
+                    "Email VARCHAR(50), \n" +
+                    "PRIMARY KEY (URL, name),\n" +
+                    "FOREIGN KEY (URL) REFERENCES Website (URL)\n" +
+                    ");"));
+
+            statement.executeUpdate(String.format("Create table IF NOT EXISTS WebsitePhone (\n" +
+                    "URL VARCHAR(200), \n" +
+                    "Phone_Number VARCHAR(20),\n" +
+                    "PRIMARY KEY (URL, Phone_Number), \n" +
+                    "FOREIGN KEY (URL) REFERENCES Website (URL) \n" +
+                    ");"));
+
+            statement.executeUpdate(String.format("Create table IF NOT EXISTS Sell( \n" +
+                    "\t\t\t\t\tPID INT, \n" +
+                    "\t\t\t\t\tWURL VARCHAR(200), \n" +
+                    "\t\t\t\t\tDate Datetime, \n" +
+                    "\t\t\t\t\tInitial_price FLOAT, \n" +
+                    "\t\t\t\t\tDiscounted_price FLOAT,\n" +
+                    "\t\t\t\t\tPRIMARY KEY (PID, WURL), \n" +
+                    "\t\t\t\t\tFOREIGN KEY (PID) REFERENCES Product(Id), \n" +
+                    "\t\t\t\t\tFOREIGN KEY (WURL) REFERENCES Website(URL),\n" +
+                    "                    check (Initial_price > Discounted_price)\n" +
+                    "                    \n" +
+                    "\t\t\t\t\t);"));
+
+
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+
+    }
+
 }
